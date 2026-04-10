@@ -214,4 +214,4 @@ On **macOS Monterey and later**, port 5000 is used by the system's **AirPlay Rec
    }
    ```
 
-*CMPE 195A/B - Senior Design Project | San Jose State University | Spring 2026*
+*San Jose State University*
