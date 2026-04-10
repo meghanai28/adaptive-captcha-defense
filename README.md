@@ -1,5 +1,7 @@
 # RL-Based Strategies for Improving Synthetic CAPTCHAs
 
+Publically Available Data at https://drive.google.com/drive/folders/1_27Cz1p2M6PF2Tu8EjZYmGUaFushvr9y
+
 > A mock concert ticket-booking web app that uses reinforcement learning (PPO, DG, or Soft PPO — all LSTM-based) to detect bots in real time based on raw telemetry (mouse movements, clicks, keystrokes, scrolls).
 
 [![CI](https://github.com/SJSU-CMPE-195/group-project-team-25/actions/workflows/ci.yml/badge.svg)](https://github.com/SJSU-CMPE-195/group-project-team-25/actions/workflows/ci.yml)
