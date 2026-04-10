@@ -1,6 +1,7 @@
 # RL-Based Strategies for Improving Synthetic CAPTCHAs
 
-Publically Available Data at https://drive.google.com/drive/folders/1_27Cz1p2M6PF2Tu8EjZYmGUaFushvr9y
+Publically Available Bot Data at https://drive.google.com/drive/folders/1_27Cz1p2M6PF2Tu8EjZYmGUaFushvr9y
+Publically Available Human Data at https://drive.google.com/drive/folders/1KUQzvGG9NdbjaxVvvGKKy0Lo5N6jbJ1S
 
 > A mock concert ticket-booking web app that uses reinforcement learning (PPO, DG, or Soft PPO — all LSTM-based) to detect bots in real time based on raw telemetry (mouse movements, clicks, keystrokes, scrolls).
 
