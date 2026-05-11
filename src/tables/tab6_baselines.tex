@@ -1,0 +1,22 @@
+\begin{table}[h]
+\centering
+\caption{Baseline Comparison: rule-based policies vs RL agents (v2 environment)}
+\label{tab:baselines}
+\begin{tabular}{lcccc}
+\toprule
+Method & Accuracy (\%) & Precision (\%) & Recall (\%) & F1 (\%) \\
+\midrule
+  Random & 68.1$\pm$0.0 & 69.0$\pm$0.0 & 65.5$\pm$0.0 & 67.2$\pm$0.0 \\
+  Always Block & 49.5$\pm$0.0 & 49.5$\pm$0.0 & 100.0$\pm$0.0 & 66.2$\pm$0.0 \\
+  Always Allow & 50.5$\pm$0.0 & 0.0$\pm$0.0 & 0.0$\pm$0.0 & 0.0$\pm$0.0 \\
+  Easy Puzzle & 76.8$\pm$0.0 & 91.5$\pm$0.0 & 58.8$\pm$0.0 & 71.5$\pm$0.0 \\
+  Hard Puzzle & 81.4$\pm$0.0 & 74.8$\pm$0.0 & 94.3$\pm$0.0 & 83.4$\pm$0.0 \\
+  HP+Block & 49.8$\pm$0.0 & 49.8$\pm$0.0 & 100.0$\pm$0.0 & 66.5$\pm$0.0 \\
+  HP+Decide & 79.0$\pm$0.0 & 97.2$\pm$0.0 & 59.4$\pm$0.0 & 73.8$\pm$0.0 \\
+\midrule
+  RL PPO (advaug) & 96.8$\pm$0.7 & 100.0$\pm$0.0 & 93.6$\pm$1.3 & 96.7$\pm$0.7 \\
+  RL DG (advaug) & 96.1$\pm$2.1 & 100.0$\pm$0.0 & 92.1$\pm$4.1 & 95.8$\pm$2.3 \\
+  RL Soft PPO (advaug) & 97.7$\pm$0.1 & 100.0$\pm$0.0 & 95.4$\pm$0.4 & 97.6$\pm$0.2 \\
+\bottomrule
+\end{tabular}
+\end{table}

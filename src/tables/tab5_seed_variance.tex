@@ -1,0 +1,19 @@
+\begin{table}[h]
+\centering
+\caption{Training Seed Variance: Per-seed accuracy (v2 environment)}
+\label{tab:seed_variance}
+\begin{tabular}{llccccccc}
+\toprule
+Algo & Aug & Seed 42 & Seed 123 & Seed 456 & Seed 789 & Seed 1024 & Mean & Std \\
+\midrule
+  PPO & No Aug & 0.971 & 0.956 & 0.974 & 0.966 & 0.965 & 0.966 & 0.006 \\
+  DG & No Aug & 0.976 & 0.977 & 0.975 & 0.911 & 0.969 & 0.962 & 0.025 \\
+  Soft PPO & No Aug & 0.971 & 0.978 & 0.974 & 0.977 & 0.968 & 0.974 & 0.004 \\
+\midrule
+  PPO & Adv Aug & 0.958 & 0.976 & 0.970 & 0.973 & 0.962 & 0.968 & 0.007 \\
+  DG & Adv Aug & 0.976 & 0.966 & 0.968 & 0.920 & 0.974 & 0.961 & 0.021 \\
+  Soft PPO & Adv Aug & 0.980 & 0.977 & 0.976 & 0.976 & 0.977 & 0.977 & 0.001 \\
+\midrule
+\bottomrule
+\end{tabular}
+\end{table}

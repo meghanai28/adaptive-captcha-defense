@@ -336,7 +336,7 @@ def plot_single(
             [cm[1, 0] / max(total, 1), 1.0],
         ]
     )
-    im = ax.imshow(cm_visual, cmap="Blues", vmin=0, vmax=1)
+    ax.imshow(cm_visual, cmap="Blues", vmin=0, vmax=1)
     ax.set_xticks([0, 1])
     ax.set_yticks([0, 1])
     ax.set_xticklabels(["Bot", "Human"], fontsize=12)
@@ -867,7 +867,7 @@ def plot_comparison(
             ]
         )
 
-        im = ax.imshow(cm_visual, cmap="Blues", vmin=0, vmax=1)
+        ax.imshow(cm_visual, cmap="Blues", vmin=0, vmax=1)
         ax.set_xticks([0, 1])
         ax.set_yticks([0, 1])
         ax.set_xticklabels(["Bot", "Human"], fontsize=10)
@@ -1021,7 +1021,7 @@ def _plot_combined_summary(agents, names, split_name, out_dir, fmt, test_set_lab
             [cm[1, 0] / max(cm_total, 1), 1.0],
         ]
     )
-    im = ax.imshow(cm_visual, cmap="Blues", vmin=0, vmax=1)
+    ax.imshow(cm_visual, cmap="Blues", vmin=0, vmax=1)
     ax.set_xticks([0, 1])
     ax.set_yticks([0, 1])
     ax.set_xticklabels(["Bot", "Human"], fontsize=10)
@@ -1114,7 +1114,7 @@ def _plot_combined_summary(agents, names, split_name, out_dir, fmt, test_set_lab
             fam_data = agents[name].get("families", {})
             for j, fam in enumerate(families_sorted):
                 matrix[i, j] = fam_data.get(fam, {}).get("rate", 0)
-        im = ax.imshow(matrix, cmap="RdYlGn", vmin=0, vmax=1, aspect="auto")
+        ax.imshow(matrix, cmap="RdYlGn", vmin=0, vmax=1, aspect="auto")
         for i in range(len(names)):
             for j in range(len(families_sorted)):
                 rate = matrix[i, j]

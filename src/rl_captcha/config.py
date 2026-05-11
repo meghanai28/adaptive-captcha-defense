@@ -110,6 +110,9 @@ class EventEnvConfig:
     # Session limits
     min_events: int = 10  # skip sessions with fewer events
     max_windows: int = 256  # cap windows per episode (subsample if longer)
+    random_window_subsample: bool = (
+        False  # if True, pick max_windows randomly instead of evenly spaced
+    )
 
     # Action costs (continue / honeypot; puzzle friction for humans is human_puzzle_friction)
     action_costs: list[float] = field(
@@ -245,6 +248,7 @@ class Config:
 #   explicit UX friction and catch-reward dicts.
 # ---------------------------------------------------------------------------
 
+
 def _make_v1_env_config() -> EventEnvConfig:
     """Translate the old (v1) reward field semantics into current EventEnvConfig fields."""
     from dataclasses import replace
@@ -258,13 +262,13 @@ def _make_v1_env_config() -> EventEnvConfig:
         puzzle_catch_rewards={2: 1.0, 3: 1.0, 4: 1.0},
         # Human passes puzzle → negative of old action_costs
         human_puzzle_friction={2: -0.10, 3: -0.30, 4: -0.50},
-        penalty_human_puzzle_fail=-1.0,       # old penalty_false_positive
-        penalty_bot_passes_puzzle=-0.4,        # old penalty_false_negative * 0.5
-        reward_direct_block_bot=1.0,           # old reward_correct_block
-        penalty_block_human=-1.0,              # old penalty_false_positive
-        penalty_bot_missed_allow=-0.8,         # old penalty_false_negative
+        penalty_human_puzzle_fail=-1.0,  # old penalty_false_positive
+        penalty_bot_passes_puzzle=-0.4,  # old penalty_false_negative * 0.5
+        reward_direct_block_bot=1.0,  # old reward_correct_block
+        penalty_block_human=-1.0,  # old penalty_false_positive
+        penalty_bot_missed_allow=-0.8,  # old penalty_false_negative
         reward_correct_allow=0.5,
-        honeypot_info_bonus=0.3,               # old value (new default is 0.5)
+        honeypot_info_bonus=0.3,  # old value (new default is 0.5)
         # v1 used a single flat bot trigger rate of 0.6 regardless of tier
         honeypot_trigger_rates_by_tier={1: 0.6, 2: 0.6, 3: 0.6, 4: 0.6, 5: 0.6},
         honeypot_trigger_rate_bot_fallback=0.6,
@@ -274,4 +278,68 @@ def _make_v1_env_config() -> EventEnvConfig:
 REWARD_PRESETS: dict[str, EventEnvConfig] = {
     "v1": _make_v1_env_config(),
     "v2": EventEnvConfig(),  # current defaults
+}
+
+
+# ---------------------------------------------------------------------------
+# Ablation configs — each entry overrides specific fields on top of a base
+# reward preset.  Used by train_ppo.py (--ablation NAME) and
+# eval_ablations.ps1 to ensure train/eval configs match.
+#
+# Structure:
+#   env_overrides: dict of EventEnvConfig field → value
+#   ppo_overrides: dict of PPOConfig field → value
+# ---------------------------------------------------------------------------
+
+ABLATION_CONFIGS: dict[str, dict] = {
+    # --- Reward signal ablations (base: ppo + advaug + v2) ---
+    "no_hp_bonus": {
+        "description": "Remove honeypot info bonus (honeypot_info_bonus=0) — "
+        "tests whether the positive signal from honeypot triggers is necessary",
+        "env_overrides": {"honeypot_info_bonus": 0.0},
+        "ppo_overrides": {},
+    },
+    "high_hp_bonus": {
+        "description": "Double honeypot info bonus (honeypot_info_bonus=1.0) — "
+        "tests whether a stronger honeypot signal improves policy",
+        "env_overrides": {"honeypot_info_bonus": 1.0},
+        "ppo_overrides": {},
+    },
+    "strict_fp": {
+        "description": "Strict false-positive penalty (penalty_block_human=-3.0) — "
+        "tests how much FP cost shapes the learned decision boundary",
+        "env_overrides": {"penalty_block_human": -3.0},
+        "ppo_overrides": {},
+    },
+    "no_continue_cost": {
+        "description": "No continue-step penalty (continue_penalty=0.0) — "
+        "tests whether penalising delay is needed to force timely decisions",
+        "env_overrides": {"continue_penalty": 0.0},
+        "ppo_overrides": {},
+    },
+    # --- Architecture ablations ---
+    "small_lstm": {
+        "description": "Half-capacity LSTM (lstm_hidden_size=64 vs default 128) — "
+        "tests whether temporal model capacity is a bottleneck",
+        "env_overrides": {},
+        "ppo_overrides": {"lstm_hidden_size": 64},
+    },
+    "large_lstm": {
+        "description": "Double-capacity LSTM (lstm_hidden_size=256 vs default 128) — "
+        "tests whether more capacity improves generalisation",
+        "env_overrides": {},
+        "ppo_overrides": {"lstm_hidden_size": 256},
+    },
+    "deep_lstm": {
+        "description": "Two-layer LSTM (lstm_num_layers=2 vs default 1) — "
+        "tests whether deeper temporal stacking helps",
+        "env_overrides": {},
+        "ppo_overrides": {"lstm_num_layers": 2},
+    },
+    "single_view": {
+        "description": "Random single-window agent (max_windows=1, random_window_subsample=True) — "
+        "ablates temporal reasoning; agent decides on one randomly sampled window",
+        "env_overrides": {"max_windows": 1, "random_window_subsample": True},
+        "ppo_overrides": {},
+    },
 }

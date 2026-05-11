@@ -514,10 +514,13 @@ class EventEnv(gym.Env):
             if len(window) >= self.config.min_events:
                 all_windows.append(window)
 
-        # Subsample to max_windows (evenly spaced) so LSTM sees manageable sequences
+        # Subsample to max_windows so LSTM sees manageable sequences
         max_w = self.config.max_windows
         if len(all_windows) > max_w:
-            indices = np.linspace(0, len(all_windows) - 1, max_w, dtype=int)
+            if self.config.random_window_subsample:
+                indices = sorted(random.sample(range(len(all_windows)), max_w))
+            else:
+                indices = np.linspace(0, len(all_windows) - 1, max_w, dtype=int)
             self._windows = [all_windows[i] for i in indices]
         else:
             self._windows = all_windows

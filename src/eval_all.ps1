@@ -27,7 +27,7 @@ function Get-AgentArgs($algo, $aug, $preset) {
 }
 
 function Run-Eval($label, $log, $agentArgs, $extraArgs) {
-    if ((Test-Path $log) -and (Select-String -Path $log -Pattern "Evaluation complete" -Quiet)) {
+    if ((Test-Path $log) -and ((Select-String -Path $log -Pattern "Evaluation complete" -Quiet) -or (Select-String -Path $log -Pattern "Best F1:" -Quiet))) {
         Write-Host "  Skipping $label - already done" -ForegroundColor Yellow
         return
     }

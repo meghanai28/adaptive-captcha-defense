@@ -139,7 +139,7 @@ def build_combined(train_rollouts: list[dict], eval_result: dict, out_path: Path
 
     # (e) Confusion Matrix
     ax = axes[1, 0]
-    im = ax.imshow(cm_pct, cmap="Blues", vmin=0, vmax=cm_pct.max() * 1.2)
+    ax.imshow(cm_pct, cmap="Blues", vmin=0, vmax=cm_pct.max() * 1.2)
     ax.set_xticks([0, 1])
     ax.set_yticks([0, 1])
     ax.set_xticklabels(["Pred Human", "Pred Bot"])

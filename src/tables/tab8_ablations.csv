@@ -1,0 +1,10 @@
+Group,Ablation,Acc_mean,Acc_std,F1_mean,F1_std
+baseline,PPO advaug v2,0.9680,0.0070,0.9670,0.0070
+Reward,No HP Bonus,0.9740,0.0000,0.9730,0.0000
+Reward,High HP Bonus,0.9680,0.0000,0.9670,0.0000
+Reward,Strict FP Pen.,0.9710,0.0000,0.9700,0.0000
+Reward,No Cont. Cost,0.9710,0.0000,0.9700,0.0000
+Architecture,LSTM-64,0.9750,0.0000,0.9740,0.0000
+Architecture,LSTM-256,0.9710,0.0000,0.9700,0.0000
+Architecture,2-Layer LSTM,0.9640,0.0000,0.9630,0.0000
+Architecture,Single View,0.9620,0.0000,0.9610,0.0000

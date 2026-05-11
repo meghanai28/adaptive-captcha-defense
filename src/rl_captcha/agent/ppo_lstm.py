@@ -276,9 +276,27 @@ class PPOLSTM:
         # Restore config if saved (prevents size mismatches from default changes)
         saved_config = checkpoint.get("config")
         if saved_config:
+            arch_changed = False
             for key, value in saved_config.items():
                 if hasattr(self.config, key):
+                    if (
+                        key in ("lstm_hidden_size", "lstm_num_layers")
+                        and getattr(self.config, key) != value
+                    ):
+                        arch_changed = True
                     setattr(self.config, key, value)
+
+            # Rebuild network if LSTM architecture differs from what was instantiated
+            if arch_changed:
+                self.network = LSTMActorCritic(
+                    input_dim=self.obs_dim,
+                    hidden_size=self.config.lstm_hidden_size,
+                    num_layers=self.config.lstm_num_layers,
+                    action_dim=self.action_dim,
+                ).to(self.device)
+                self.optimizer = optim.Adam(
+                    self.network.parameters(), lr=self.config.lr
+                )
 
         self.network.load_state_dict(checkpoint["network"])
         self.optimizer.load_state_dict(checkpoint["optimizer"])

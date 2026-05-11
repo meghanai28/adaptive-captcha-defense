@@ -206,8 +206,6 @@ def _type_with_hold(
 
     i = 0
     while i < len(text):
-        char = text[i]
-
         # Burst typing: sometimes type 2-3 chars quickly in a row
         burst_len = 1
         if random.random() < 0.3 and i + 2 < len(text):
@@ -263,8 +261,6 @@ def _type_human(element, text):
 
     i = 0
     while i < len(text):
-        char = text[i]
-
         # Burst typing: sometimes type 2-3 chars quickly in a row
         burst_len = 1
         if random.random() < 0.3 and i + 2 < len(text):
@@ -315,12 +311,6 @@ def _human_move_and_click(driver, element, click_only=False):
         ActionChains(driver).move_to_element(element).click().perform()
         time.sleep(random.uniform(0.05, 0.15))
         return
-
-    # Get current mouse position (approximate via element location)
-    loc = element.location
-    size = element.size
-    target_x = loc["x"] + size["width"] / 2
-    target_y = loc["y"] + size["height"] / 2
 
     # Multi-step approach with Bezier-like curve
     steps = random.randint(10, 25)
@@ -561,9 +551,6 @@ def _wander_mouse(driver, duration=None):
             dy_total = random.randint(-200, 200)
             steps = random.randint(8, 20)
             for s in range(steps):
-                t = (s + 1) / steps
-                # Ease-in-out
-                t_eased = t * t * (3 - 2 * t)
                 dx = int(dx_total / steps + random.gauss(0, 4))
                 dy = int(dy_total / steps + random.gauss(0, 3))
                 if dx != 0 or dy != 0:
@@ -1692,8 +1679,6 @@ def stealth_bot(driver, skip_honeypot=False):
     else:
         profile = None
         print("  WARNING: No human data in data/human/, using synthetic timing")
-
-    key_intervals = profile["key_intervals"] if profile else []
 
     # Randomly pick a persona: 60% quick decisive, 40% indecisive browser
     indecisive = random.random() < 0.4

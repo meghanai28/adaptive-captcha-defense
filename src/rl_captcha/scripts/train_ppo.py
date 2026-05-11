@@ -49,11 +49,12 @@ from dataclasses import replace
 import numpy as np
 import torch
 
-from rl_captcha.config import Config, REWARD_PRESETS
+from rl_captcha.config import Config, REWARD_PRESETS, ABLATION_CONFIGS
 from rl_captcha.data.loader import (
     load_from_directory,
     split_sessions,
     split_sessions_by_family,
+    split_sessions_by_person,
 )
 from rl_captcha.environment.event_env import EventEnv
 from rl_captcha.agent.ppo_lstm import PPOLSTM
@@ -167,6 +168,25 @@ def parse_args() -> argparse.Namespace:
         help="Bot tiers to hold out from training (e.g. 3 4 5)",
     )
     p.add_argument(
+        "--person-a-dir",
+        type=str,
+        default=None,
+        help="Directory whose filenames identify Person A's sessions in data/human/",
+    )
+    p.add_argument(
+        "--person-b-dir",
+        type=str,
+        default=None,
+        help="Directory whose filenames identify Person B's sessions in data/human/",
+    )
+    p.add_argument(
+        "--held-out-person",
+        type=str,
+        choices=["A", "B"],
+        default=None,
+        help="Hold out all sessions for this person from training (test-only)",
+    )
+    p.add_argument(
         "--reward-preset",
         type=str,
         default="v2",
@@ -178,7 +198,62 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=None,
         help="Seed for model weight initialization (for multi-seed runs). "
-             "Separate from --split-seed which controls data splitting.",
+        "Separate from --split-seed which controls data splitting.",
+    )
+
+    # ------------------------------------------------------------------
+    # Ablation / override flags
+    # ------------------------------------------------------------------
+    p.add_argument(
+        "--ablation",
+        type=str,
+        default=None,
+        choices=list(ABLATION_CONFIGS.keys()),
+        help="Apply a named ablation config on top of --reward-preset. "
+        "See ABLATION_CONFIGS in config.py for the full list.",
+    )
+    # Individual overrides (applied after --ablation, if both are given)
+    p.add_argument(
+        "--lstm-hidden-size",
+        type=int,
+        default=None,
+        help="Override PPOConfig.lstm_hidden_size",
+    )
+    p.add_argument(
+        "--lstm-num-layers",
+        type=int,
+        default=None,
+        help="Override PPOConfig.lstm_num_layers",
+    )
+    p.add_argument(
+        "--honeypot-bonus",
+        type=float,
+        default=None,
+        help="Override EventEnvConfig.honeypot_info_bonus",
+    )
+    p.add_argument(
+        "--penalty-block-human",
+        type=float,
+        default=None,
+        help="Override EventEnvConfig.penalty_block_human",
+    )
+    p.add_argument(
+        "--penalty-bot-missed",
+        type=float,
+        default=None,
+        help="Override EventEnvConfig.penalty_bot_missed_allow",
+    )
+    p.add_argument(
+        "--continue-penalty",
+        type=float,
+        default=None,
+        help="Override EventEnvConfig.continue_penalty",
+    )
+    p.add_argument(
+        "--max-windows",
+        type=int,
+        default=None,
+        help="Override EventEnvConfig.max_windows",
     )
     return p.parse_args()
 
@@ -196,6 +271,43 @@ def main():
     # Apply reward preset before any per-flag overrides
     cfg.event_env = REWARD_PRESETS[args.reward_preset]
     print(f"  Reward preset: {args.reward_preset}")
+
+    # Apply named ablation (env + ppo overrides from ABLATION_CONFIGS)
+    if args.ablation is not None:
+        abl = ABLATION_CONFIGS[args.ablation]
+        print(f"  Ablation: {args.ablation}")
+        print(f"    {abl['description']}")
+        if abl["env_overrides"]:
+            cfg.event_env = replace(cfg.event_env, **abl["env_overrides"])
+        for field, val in abl["ppo_overrides"].items():
+            setattr(cfg.ppo, field, val)
+
+    # Individual overrides (applied after --ablation so they can refine it)
+    if args.lstm_hidden_size is not None:
+        cfg.ppo.lstm_hidden_size = args.lstm_hidden_size
+        print(f"  Override: lstm_hidden_size={args.lstm_hidden_size}")
+    if args.lstm_num_layers is not None:
+        cfg.ppo.lstm_num_layers = args.lstm_num_layers
+        print(f"  Override: lstm_num_layers={args.lstm_num_layers}")
+    if args.honeypot_bonus is not None:
+        cfg.event_env = replace(cfg.event_env, honeypot_info_bonus=args.honeypot_bonus)
+        print(f"  Override: honeypot_info_bonus={args.honeypot_bonus}")
+    if args.penalty_block_human is not None:
+        cfg.event_env = replace(
+            cfg.event_env, penalty_block_human=args.penalty_block_human
+        )
+        print(f"  Override: penalty_block_human={args.penalty_block_human}")
+    if args.penalty_bot_missed is not None:
+        cfg.event_env = replace(
+            cfg.event_env, penalty_bot_missed_allow=args.penalty_bot_missed
+        )
+        print(f"  Override: penalty_bot_missed_allow={args.penalty_bot_missed}")
+    if args.continue_penalty is not None:
+        cfg.event_env = replace(cfg.event_env, continue_penalty=args.continue_penalty)
+        print(f"  Override: continue_penalty={args.continue_penalty}")
+    if args.max_windows is not None:
+        cfg.event_env = replace(cfg.event_env, max_windows=args.max_windows)
+        print(f"  Override: max_windows={args.max_windows}")
 
     if args.total_timesteps is not None:
         cfg.ppo.total_timesteps = args.total_timesteps
@@ -229,8 +341,32 @@ def main():
         )
         return
 
-    # Stratified 70/15/15 split (with optional held-out families/tiers)
-    if args.held_out_families or args.held_out_tiers:
+    # Stratified 70/15/15 split (with optional held-out families/tiers/person)
+    if args.held_out_person:
+        person_dir = (
+            args.person_a_dir if args.held_out_person == "A" else args.person_b_dir
+        )
+        if not person_dir:
+            side = "a" if args.held_out_person == "A" else "b"
+            print(
+                f"ERROR: --held-out-person {args.held_out_person} requires --person-{side}-dir"
+            )
+            return
+        from pathlib import Path as _Path
+
+        held_filenames = {p.name for p in _Path(person_dir).glob("*.json")}
+        print(
+            f"  Held-out person {args.held_out_person}: {len(held_filenames)} session files from {person_dir}"
+        )
+        train_sessions, val_sessions, test_sessions = split_sessions_by_person(
+            sessions,
+            held_out_filenames=held_filenames,
+            train=0.70,
+            val=0.15,
+            test=0.15,
+            seed=args.split_seed,
+        )
+    elif args.held_out_families or args.held_out_tiers:
         print(f"  Held-out families: {args.held_out_families or '(none)'}")
         print(f"  Held-out tiers:    {args.held_out_tiers or '(none)'}")
         train_sessions, val_sessions, test_sessions = split_sessions_by_family(
@@ -260,8 +396,6 @@ def main():
     # Create environments (augmentation on for training, off for validation)
     train_env = EventEnv(train_sessions, config=cfg.event_env)
     if val_sessions:
-        from dataclasses import replace
-
         val_cfg = replace(cfg.event_env, augment=False)
         val_env = EventEnv(val_sessions, config=val_cfg)
     else:
@@ -386,7 +520,6 @@ def _quick_validate(env: EventEnv, agent: PPOLSTM, num_episodes: int) -> float:
             obs, info = env.reset()
             agent.reset_hidden()
 
-        true_label = info["true_label"]
         action_mask = info.get("action_mask")
         done = False
 

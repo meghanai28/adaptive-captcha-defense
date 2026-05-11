@@ -32,6 +32,7 @@ from rl_captcha.data.loader import (
     load_from_directory,
     split_sessions,
     split_sessions_by_family,
+    split_sessions_by_person,
     bot_type_to_tier,
     TIER_NAMES,
 )
@@ -91,6 +92,12 @@ def parse_args() -> argparse.Namespace:
         help="Include adversarially augmented bot sessions in evaluation",
     )
     p.add_argument(
+        "--challenge-as-fp",
+        action="store_true",
+        help="Strict mode: count human_passed_puzzle as false positive. "
+        "Any unnecessary challenge to a human is a UX failure.",
+    )
+    p.add_argument(
         "--held-out-families",
         type=str,
         nargs="*",
@@ -105,11 +112,63 @@ def parse_args() -> argparse.Namespace:
         help="Bot tiers to hold out from train/val (test-only)",
     )
     p.add_argument(
+        "--person-a-dir",
+        type=str,
+        default=None,
+        help="Directory whose filenames identify Person A's sessions in data/human/",
+    )
+    p.add_argument(
+        "--person-b-dir",
+        type=str,
+        default=None,
+        help="Directory whose filenames identify Person B's sessions in data/human/",
+    )
+    p.add_argument(
+        "--held-out-person",
+        type=str,
+        choices=["A", "B"],
+        default=None,
+        help="Evaluate only on this person's sessions (must match training's held-out person)",
+    )
+    p.add_argument(
         "--reward-preset",
         type=str,
         default="v2",
         choices=list(REWARD_PRESETS.keys()),
         help="Reward environment preset to evaluate in: v1 or v2 (default: v2)",
+    )
+    # Architecture overrides — must match the training config for ablation models
+    p.add_argument(
+        "--lstm-hidden-size",
+        type=int,
+        default=None,
+        help="Override LSTM hidden size when loading ablation checkpoints",
+    )
+    p.add_argument(
+        "--lstm-num-layers",
+        type=int,
+        default=None,
+        help="Override LSTM number of layers when loading ablation checkpoints",
+    )
+    # Environment overrides for ablation eval (must match training env)
+    p.add_argument(
+        "--max-windows",
+        type=int,
+        default=None,
+        help="Override EventEnvConfig.max_windows (e.g. 1 for single_view ablation)",
+    )
+    p.add_argument(
+        "--random-window-subsample",
+        action="store_true",
+        default=False,
+        help="Override EventEnvConfig.random_window_subsample=True (for single_view ablation)",
+    )
+    p.add_argument(
+        "--log-per-session",
+        type=str,
+        default=None,
+        metavar="PATH",
+        help="Write per-episode CSV (agent, true_label, outcome, challenged, steps, bot_type) to PATH",
     )
     return p.parse_args()
 
@@ -138,22 +197,50 @@ def _parse_agent_specs(agent_args: list[str]) -> list[tuple[str, str]]:
 def _create_agent(name: str, cfg: Config, device: str) -> PPOLSTM:
     """Instantiate the correct agent class based on the agent name.
 
-    Handles both old-style names (ppo, dg, soft_ppo) and new augmentation-
-    aware names (ppo_noaug, ppo_advaug, dg_noaug, dg_advaug, etc.).
+    Handles old-style names (ppo, dg, soft_ppo), augmentation-aware names
+    (ppo_noaug, ppo_advaug, ...), and ablation names
+    (ppo_advaug_v2_ablation_small_lstm_seed42, ...).
     """
     kwargs = dict(obs_dim=cfg.event_env.event_dim, action_dim=7, device=device)
-    # Strip augmentation suffixes to get the base algorithm
-    algo = name.lower().replace("_noaug", "").replace("_advaug", "")
-    if algo == "dg":
-        return DGLSTM(config=DGConfig(), **kwargs)
-    elif algo == "soft_ppo":
-        return SoftPPOLSTM(config=SoftPPOConfig(), **kwargs)
+    n = name.lower()
+    # Detect algorithm by prefix to handle all naming conventions
+    if n.startswith("dg"):
+        return DGLSTM(
+            config=DGConfig(
+                **{
+                    k: getattr(cfg.ppo, k)
+                    for k in DGConfig.__dataclass_fields__
+                    if k in cfg.ppo.__dataclass_fields__
+                }
+            ),
+            **kwargs,
+        )
+    elif n.startswith("soft_ppo"):
+        return SoftPPOLSTM(
+            config=SoftPPOConfig(
+                **{
+                    k: getattr(cfg.ppo, k)
+                    for k in SoftPPOConfig.__dataclass_fields__
+                    if k in cfg.ppo.__dataclass_fields__
+                }
+            ),
+            **kwargs,
+        )
     else:
         return PPOLSTM(config=cfg.ppo, **kwargs)
 
 
+_CHALLENGE_AS_FP: bool = (
+    False  # set from args in main(), read by _compute_metrics callers
+)
+
+
 def main():
+    global _CHALLENGE_AS_FP
     args = parse_args()
+    _CHALLENGE_AS_FP = bool(args.challenge_as_fp)
+    if _CHALLENGE_AS_FP:
+        print("  [strict mode] human_passed_puzzle counted as false positive")
     cfg = Config()
 
     # Load data
@@ -174,7 +261,41 @@ def main():
         eval_sessions = sessions
         print(f"  Evaluating on ALL {len(eval_sessions)} sessions")
     else:
-        if args.held_out_families or args.held_out_tiers:
+        if args.held_out_person:
+            person_dir = (
+                args.person_a_dir if args.held_out_person == "A" else args.person_b_dir
+            )
+            if not person_dir:
+                side = "a" if args.held_out_person == "A" else "b"
+                print(
+                    f"ERROR: --held-out-person {args.held_out_person} requires --person-{side}-dir"
+                )
+                return
+            from pathlib import Path as _Path
+
+            held_filenames = {p.name for p in _Path(person_dir).glob("*.json")}
+            print(
+                f"  Held-out person {args.held_out_person}: {len(held_filenames)} session files"
+            )
+            train_s, val_s, test_s = split_sessions_by_person(
+                sessions,
+                held_out_filenames=held_filenames,
+                train=0.70,
+                val=0.15,
+                test=0.15,
+                seed=args.split_seed,
+            )
+            # For person eval, restrict test to ONLY the held-out person's human sessions
+            if args.split == "test":
+                from pathlib import Path as _Path2
+
+                test_s = [
+                    s
+                    for s in test_s
+                    if s.label == 1
+                    and _Path2(s.metadata.get("source_file", "")).name in held_filenames
+                ]
+        elif args.held_out_families or args.held_out_tiers:
             print(f"  Held-out families: {args.held_out_families or '(none)'}")
             print(f"  Held-out tiers:    {args.held_out_tiers or '(none)'}")
             train_s, val_s, test_s = split_sessions_by_family(
@@ -207,9 +328,24 @@ def main():
     from dataclasses import replace
 
     preset_cfg = REWARD_PRESETS[args.reward_preset]
+    # Apply eval-time env overrides (must match training config for ablations)
+    if args.max_windows is not None:
+        preset_cfg = replace(preset_cfg, max_windows=args.max_windows)
+        print(f"  Override: max_windows={args.max_windows}")
+    if args.random_window_subsample:
+        preset_cfg = replace(preset_cfg, random_window_subsample=True)
+        print("  Override: random_window_subsample=True")
     eval_cfg = replace(preset_cfg, augment=False)
     print(f"  Reward preset: {args.reward_preset}")
     env = EventEnv(eval_sessions, config=eval_cfg)
+
+    # Apply LSTM architecture overrides (must match training config for ablations)
+    if args.lstm_hidden_size is not None:
+        cfg.ppo.lstm_hidden_size = args.lstm_hidden_size
+        print(f"  Override: lstm_hidden_size={args.lstm_hidden_size}")
+    if args.lstm_num_layers is not None:
+        cfg.ppo.lstm_num_layers = args.lstm_num_layers
+        print(f"  Override: lstm_num_layers={args.lstm_num_layers}")
 
     # Parse agent specs
     agent_specs = _parse_agent_specs(args.agent)
@@ -248,7 +384,9 @@ def main():
                     eval_seed=seed,
                 )
                 seed_episodes.append(results["episodes"])
-                seed_metrics.append(_compute_metrics(results["episodes"]))
+                seed_metrics.append(
+                    _compute_metrics(results["episodes"], _CHALLENGE_AS_FP)
+                )
 
             combined_episodes = [e for eps in seed_episodes for e in eps]
             all_results[name] = {
@@ -290,6 +428,46 @@ def main():
             )
         else:
             _print_comparison(all_results, split_name=args.split)
+
+    if args.log_per_session:
+        import csv as _csv
+        from pathlib import Path as _Path
+
+        _CHALLENGE_OUTCOMES = {
+            "false_positive_block",
+            "fp_puzzle",
+            "human_passed_puzzle",
+        }
+        _out = _Path(args.log_per_session)
+        _out.parent.mkdir(parents=True, exist_ok=True)
+        with open(_out, "w", newline="") as _f:
+            _w = _csv.DictWriter(
+                _f,
+                fieldnames=[
+                    "agent",
+                    "true_label",
+                    "outcome",
+                    "challenged",
+                    "steps",
+                    "bot_type",
+                ],
+            )
+            _w.writeheader()
+            for _name in all_results:
+                for _e in all_results[_name]["episodes"]:
+                    _w.writerow(
+                        {
+                            "agent": _name,
+                            "true_label": _e["true_label"],
+                            "outcome": _e["outcome"],
+                            "challenged": _e["outcome"] in _CHALLENGE_OUTCOMES,
+                            "steps": _e["steps"],
+                            "bot_type": _e.get("bot_type") or "",
+                        }
+                    )
+        print(f"  Per-session log -> {_out}")
+
+    print("\nEvaluation complete.")
 
 
 def _run_evaluation(
@@ -378,8 +556,13 @@ def _run_evaluation(
     return {"episodes": episode_data}
 
 
-def _compute_metrics(episodes: list[dict]) -> dict:
-    """Compute evaluation metrics from episode data."""
+def _compute_metrics(episodes: list[dict], challenge_as_fp: bool = False) -> dict:
+    """Compute evaluation metrics from episode data.
+
+    challenge_as_fp: if True, human_passed_puzzle counts as FP (strict mode).
+    A human who was challenged unnecessarily is an incorrect outcome even if
+    they ultimately passed the puzzle.
+    """
     n = len(episodes)
     rewards = [e["reward"] for e in episodes]
     lengths = [e["steps"] for e in episodes]
@@ -390,17 +573,21 @@ def _compute_metrics(episodes: list[dict]) -> dict:
         if e["true_label"] == 0
         and e["outcome"] in ("correct_block", "bot_blocked_puzzle")
     )
+    _tn_outcomes = (
+        ("correct_allow",)
+        if challenge_as_fp
+        else ("correct_allow", "human_passed_puzzle")
+    )
     tn = sum(
-        1
-        for e in episodes
-        if e["true_label"] == 1
-        and e["outcome"] in ("correct_allow", "human_passed_puzzle")
+        1 for e in episodes if e["true_label"] == 1 and e["outcome"] in _tn_outcomes
+    )
+    _fp_outcomes = (
+        ("false_positive_block", "fp_puzzle", "human_passed_puzzle")
+        if challenge_as_fp
+        else ("false_positive_block", "fp_puzzle")
     )
     fp = sum(
-        1
-        for e in episodes
-        if e["true_label"] == 1
-        and e["outcome"] in ("false_positive_block", "fp_puzzle")
+        1 for e in episodes if e["true_label"] == 1 and e["outcome"] in _fp_outcomes
     )
     fn = sum(
         1
@@ -420,7 +607,10 @@ def _compute_metrics(episodes: list[dict]) -> dict:
     accuracy = (tp + tn) / n if n > 0 else 0.0
 
     # Honeypot usage — count actual deployments, not attempted actions
-    honeypot_counts = [e.get("honeypots_deployed", sum(1 for a in e["actions"] if a == 1)) for e in episodes]
+    honeypot_counts = [
+        e.get("honeypots_deployed", sum(1 for a in e["actions"] if a == 1))
+        for e in episodes
+    ]
     episodes_with_honeypot = sum(1 for c in honeypot_counts if c > 0)
     avg_honeypots = float(np.mean(honeypot_counts)) if honeypot_counts else 0.0
 
@@ -455,7 +645,7 @@ def _print_results(results: dict, agent_name: str = "agent", split_name: str = "
     """Print evaluation summary for one agent."""
     episodes = results["episodes"]
     n = len(episodes)
-    m = _compute_metrics(episodes)
+    m = _compute_metrics(episodes, _CHALLENGE_AS_FP)
 
     print(f"=== {agent_name.upper()} - {split_name.upper()} split ({n} episodes) ===")
     print(f"  Avg reward:  {m['avg_reward']:.3f} +/- {m['std_reward']:.3f}")
@@ -507,7 +697,10 @@ def _print_results(results: dict, agent_name: str = "agent", split_name: str = "
     print()
 
     # Honeypot usage
-    honeypot_counts = [e.get("honeypots_deployed", sum(1 for a in e["actions"] if a == 1)) for e in episodes]
+    honeypot_counts = [
+        e.get("honeypots_deployed", sum(1 for a in e["actions"] if a == 1))
+        for e in episodes
+    ]
     eps_with_hp = sum(1 for c in honeypot_counts if c > 0)
     avg_hp = float(np.mean(honeypot_counts)) if honeypot_counts else 0.0
     total_hp = sum(honeypot_counts)
@@ -770,7 +963,7 @@ def _print_comparison(all_results: dict[str, dict], split_name: str = "test"):
 
     metrics = {}
     for name, results in all_results.items():
-        metrics[name] = _compute_metrics(results["episodes"])
+        metrics[name] = _compute_metrics(results["episodes"], _CHALLENGE_AS_FP)
 
     # Header
     names = list(metrics.keys())
@@ -805,35 +998,23 @@ def _print_comparison(all_results: dict[str, dict], split_name: str = "test"):
 
     print()
 
-    # Highlight best
-    best_acc = max(names, key=lambda n: metrics[n]["accuracy"])
-    best_f1 = max(names, key=lambda n: metrics[n]["f1"])
-    best_reward = max(names, key=lambda n: metrics[n]["avg_reward"])
-    print(f"  Best accuracy: {best_acc} ({metrics[best_acc]['accuracy']:.3f})")
-    print(f"  Best F1:       {best_f1} ({metrics[best_f1]['f1']:.3f})")
-    print(f"  Best reward:   {best_reward} ({metrics[best_reward]['avg_reward']:.3f})")
-    print()
-
 
 def _print_comparison_multiseed(
     all_metrics: dict[str, list[dict]],
     seeds: list[int],
     split_name: str = "test",
 ):
-    """Print side-by-side comparison with mean +/- std across seeds."""
-    print()
-    print("=" * 80)
-    print(
-        f"  COMPARISON TABLE — {split_name.upper()} split "
-        f"(mean +/- std, {len(seeds)} seeds: {seeds})"
-    )
-    print("=" * 80)
+    """Print comparison table averaged over training seeds and eval seeds.
+
+    Groups agent names by their base algorithm (strips trailing _seed{N}) so
+    each column represents one model variant with mean +/- std computed over
+    all training seeds (each training seed is itself already averaged over eval
+    seeds). Never highlights a single best seed.
+    """
+    import re as _re
 
     names = list(all_metrics.keys())
-    col_w = max(20, max(len(n) for n in names) + 4)
-    header = f"  {'Metric':<16s}" + "".join(f"{n:>{col_w}s}" for n in names)
-    print(header)
-    print("  " + "-" * (16 + col_w * len(names)))
+    n_eval_seeds = len(seeds)
 
     rows = [
         ("Accuracy", "accuracy"),
@@ -845,26 +1026,59 @@ def _print_comparison_multiseed(
         ("Avg HP/ep", "avg_honeypots_per_ep"),
     ]
 
+    # Group by base algorithm name (strip trailing _seed{N})
+    groups: dict[str, list[str]] = {}
+    for name in names:
+        base = _re.sub(r"_seed\d+$", "", name)
+        groups.setdefault(base, []).append(name)
+
+    group_names = list(groups.keys())
+    n_train_seeds = max(len(v) for v in groups.values())
+
+    # For each group compute mean ± std over training seeds
+    # Each training seed's value is already averaged over eval seeds
+    group_stats: dict[str, dict[str, tuple[float, float]]] = {}
+    for base, members in groups.items():
+        group_stats[base] = {}
+        for _, key in rows:
+            per_seed = [
+                float(np.mean([m[key] for m in all_metrics[n]])) for n in members
+            ]
+            group_stats[base][key] = (float(np.mean(per_seed)), float(np.std(per_seed)))
+
+    print()
+    print("=" * 80)
+    print(
+        f"  COMPARISON TABLE — {split_name.upper()} split "
+        f"(mean +/- std, {n_train_seeds} training seeds × {n_eval_seeds} eval seeds)"
+    )
+    print("=" * 80)
+
+    col_w = max(20, max(len(n) for n in group_names) + 4)
+    header = f"  {'Metric':<16s}" + "".join(f"{n:>{col_w}s}" for n in group_names)
+    print(header)
+    print("  " + "-" * (16 + col_w * len(group_names)))
+
     for label, key in rows:
         row = f"  {label:<16s}"
-        for name in names:
-            values = [m[key] for m in all_metrics[name]]
-            mean = np.mean(values)
-            std = np.std(values)
+        for base in group_names:
+            mean, std = group_stats[base][key]
             row += f"{f'{mean:.3f} +/- {std:.3f}':>{col_w}s}"
         print(row)
 
     print()
 
-    # Highlight best (by mean)
-    best_acc = max(
-        names, key=lambda n: np.mean([m["accuracy"] for m in all_metrics[n]])
-    )
-    best_f1 = max(names, key=lambda n: np.mean([m["f1"] for m in all_metrics[n]]))
-    acc_mean = np.mean([m["accuracy"] for m in all_metrics[best_acc]])
-    f1_mean = np.mean([m["f1"] for m in all_metrics[best_f1]])
-    print(f"  Best accuracy: {best_acc} ({acc_mean:.3f})")
-    print(f"  Best F1:       {best_f1} ({f1_mean:.3f})")
+    # Per-training-seed detail (for transparency, not for selection)
+    print("--- Per-Training-Seed Detail ---")
+    print(f"  {'Agent':<42s} {'Acc':>8s} {'Prec':>8s} {'Recall':>8s} {'F1':>8s}")
+    print("  " + "-" * 68)
+    for name in names:
+        per_eval = all_metrics[name]
+        acc = float(np.mean([m["accuracy"] for m in per_eval]))
+        prec = float(np.mean([m["precision"] for m in per_eval]))
+        rec = float(np.mean([m["recall"] for m in per_eval]))
+        f1 = float(np.mean([m["f1"] for m in per_eval]))
+        print(f"  {name:<42s} {acc:8.3f} {prec:8.3f} {rec:8.3f} {f1:8.3f}")
     print()
 
 

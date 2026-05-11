@@ -209,14 +209,6 @@ def import_checkouts_from_csv(csv_path=None, skip_duplicates=True):
             try:
                 # Check for duplicates if skip_duplicates is True
                 if skip_duplicates:
-                    # Parse timestamp if it exists
-                    timestamp = None
-                    if "timestamp" in row and pd.notna(row["timestamp"]):
-                        try:
-                            timestamp = pd.to_datetime(row["timestamp"])
-                        except:
-                            pass
-
                     # Check if record already exists
                     existing = (
                         db.query(Checkout)
@@ -248,8 +240,8 @@ def import_checkouts_from_csv(csv_path=None, skip_duplicates=True):
                 if "timestamp" in row and pd.notna(row["timestamp"]):
                     try:
                         checkout.timestamp = pd.to_datetime(row["timestamp"])
-                    except:
-                        pass  # Use default timestamp
+                    except Exception:
+                        pass
 
                 db.add(checkout)
                 imported_count += 1

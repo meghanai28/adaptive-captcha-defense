@@ -356,7 +356,7 @@ def main():
     x = np.arange(26)
     width = 0.35
 
-    bars1 = ax.bar(
+    ax.bar(
         x - width / 2,
         detected_distance,
         width,
@@ -366,7 +366,7 @@ def main():
         edgecolor="white",
         linewidth=0.5,
     )
-    bars2 = ax.bar(
+    ax.bar(
         x + width / 2,
         missed_distance,
         width,

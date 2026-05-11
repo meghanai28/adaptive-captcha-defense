@@ -528,3 +528,47 @@ def split_sessions_by_family(
 
     # Add held-out bots to test set only
     return seen_train, seen_val, seen_test + held_out_bots
+
+
+def split_sessions_by_person(
+    sessions: list[Session],
+    held_out_filenames: set[str],
+    train: float = 0.70,
+    val: float = 0.15,
+    test: float = 0.15,
+    seed: int = 42,
+) -> tuple[list[Session], list[Session], list[Session]]:
+    """Split with one person's human sessions held out entirely for test.
+
+    Human sessions whose ``source_file`` filename matches *held_out_filenames*
+    go only into the test set — the model never sees them during training.
+    All other sessions (remaining humans + all bots) are split normally.
+
+    Parameters
+    ----------
+    held_out_filenames : set[str]
+        Bare filenames (e.g. ``{"session_abc.json"}```) of the held-out
+        person's sessions.  Build this from the person's identification
+        directory: ``{p.name for p in Path(person_dir).glob("*.json")}``.
+    """
+    assert abs(train + val + test - 1.0) < 1e-6, "Ratios must sum to 1.0"
+
+    def _is_held_out_human(s: Session) -> bool:
+        if s.label != 1:
+            return False
+        src = s.metadata.get("source_file", "")
+        return Path(src).name in held_out_filenames
+
+    held_out_humans = [s for s in sessions if _is_held_out_human(s)]
+    seen_sessions = [s for s in sessions if not _is_held_out_human(s)]
+
+    seen_train, seen_val, seen_test = split_sessions(
+        seen_sessions,
+        train=train,
+        val=val,
+        test=test,
+        seed=seed,
+    )
+
+    # Held-out person's sessions go to test only — never trained on
+    return seen_train, seen_val, seen_test + held_out_humans

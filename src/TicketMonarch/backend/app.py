@@ -103,7 +103,7 @@ def checkout():
 
         return jsonify({"success": True, "id": order_id}), 201
 
-    except Exception as e:
+    except Exception:
         return jsonify({"success": False, "error": "Internal server error"}), 500
 
 

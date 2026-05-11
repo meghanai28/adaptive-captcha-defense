@@ -24,7 +24,8 @@ EVENT_LABEL = {
 }
 
 
-# Read the file and return tuple of (concert_select_page, section_select_page , checkout_page) based on event type sent ("mouse" || "click")
+# Read the file and return tuple of (concert_select_page, section_select_page, checkout_page)
+# based on event type sent ("mouse" || "click")
 def read_file(file, eventType):
     folder = Path(file)
 

@@ -323,7 +323,7 @@ def plot_comparison(
                 fn = result.get("fn", 0)
                 cm = np.array([[tp, fn], [fp, tn]])
 
-                im = ax.imshow(cm, cmap=teal_cmap, vmin=0, vmax=max(cm.max() * 1.2, 1))
+                ax.imshow(cm, cmap=teal_cmap, vmin=0, vmax=max(cm.max() * 1.2, 1))
                 ax.set_xticks([0, 1])
                 ax.set_yticks([0, 1])
                 ax.set_xticklabels(["Bot", "Human"], fontsize=10)

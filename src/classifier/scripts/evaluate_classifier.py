@@ -190,7 +190,7 @@ def main() -> None:
 
     # 6a. Confusion matrix heatmap
     ax = axes[0, 0]
-    im = ax.imshow(cm, cmap="Blues")
+    ax.imshow(cm, cmap="Blues")
     ax.set_xticks([0, 1])
     ax.set_yticks([0, 1])
     ax.set_xticklabels(["Bot", "Human"])

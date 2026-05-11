@@ -1,0 +1,23 @@
+\begin{table}[h]
+\centering
+\caption{Ablation Study: Accuracy and F1 for each design choice (PPO, advaug, v2 base; mean $\pm$ std across 5 seeds)}
+\label{tab:ablations}
+\begin{tabular}{llcc}
+\toprule
+Group & Ablation & Accuracy (\%) & F1 (\%) \\
+\midrule
+  -- & Baseline (PPO, advaug, v2) & 96.8$\pm$0.7 & 96.7$\pm$0.7 \\
+\midrule
+  Reward & No HP Bonus & 97.4$\pm$0.0 & 97.3$\pm$0.0 \\
+  Reward & High HP Bonus & 96.8$\pm$0.0 & 96.7$\pm$0.0 \\
+  Reward & Strict FP Pen. & 97.1$\pm$0.0 & 97.0$\pm$0.0 \\
+  Reward & No Cont. Cost & 97.1$\pm$0.0 & 97.0$\pm$0.0 \\
+\midrule
+  Architecture & LSTM-64 & 97.5$\pm$0.0 & 97.4$\pm$0.0 \\
+  Architecture & LSTM-256 & 97.1$\pm$0.0 & 97.0$\pm$0.0 \\
+  Architecture & 2-Layer LSTM & 96.4$\pm$0.0 & 96.3$\pm$0.0 \\
+  Architecture & Single View & 96.2$\pm$0.0 & 96.1$\pm$0.0 \\
+\midrule
+\bottomrule
+\end{tabular}
+\end{table}
