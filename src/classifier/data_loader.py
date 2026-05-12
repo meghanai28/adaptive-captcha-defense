@@ -153,7 +153,7 @@ def _load_json_file(path: Path, label: int) -> list[Session]:
                         clicks=clicks,
                         keystrokes=keystrokes,
                         scroll=scroll,
-                        metadata={"source_file": path.name},
+                        metadata=_build_metadata(session_data, path),
                     )
                 )
         else:
@@ -190,8 +190,15 @@ def _ensure_list(value: Any) -> list:
 
 
 def _build_metadata(item: dict, path: Path) -> dict:
-    """Merge any ``metadata`` field on the JSON record with source-file info."""
+    """Merge the JSON record's ``metadata`` field with source-file info, and
+    promote top-level adversary-identifier fields (``bot_type``, ``tier``) into
+    metadata so downstream code (e.g. family-disjoint evaluation) can read them.
+    """
     raw = item.get("metadata")
     meta: dict = dict(raw) if isinstance(raw, dict) else {}
     meta.setdefault("source_file", path.name)
+    for k in ("bot_type", "tier"):
+        v = item.get(k)
+        if v is not None:
+            meta.setdefault(k, v)
     return meta

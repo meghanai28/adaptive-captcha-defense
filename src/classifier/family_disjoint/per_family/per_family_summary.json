@@ -1,0 +1,463 @@
+{
+  "args": {
+    "data_dir": "src/data/",
+    "models": [
+      "src/classifier/models/xgb_v1",
+      "src/classifier/models/xgb_v1_noaug",
+      "src/classifier/models/xgb_v2",
+      "src/classifier/models/xgb_v2_noaug"
+    ],
+    "labels": [
+      "xgb_v1 (tuned+aug)",
+      "xgb_v1_noaug (tuned, no aug)",
+      "xgb_v2 (default+aug)",
+      "xgb_v2_noaug (default, no aug)"
+    ],
+    "output_dir": "src/classifier/family_disjoint/per_family",
+    "test_size": 0.3,
+    "random_state": 13,
+    "threshold": 0.5
+  },
+  "rows": [
+    {
+      "model": "xgb_v1 (tuned+aug)",
+      "model_dir": "src/classifier/models/xgb_v1",
+      "family": "erratic",
+      "display_name": "Erratic",
+      "n": 14,
+      "detection_rate": 1.0,
+      "mean_human_score": 0.0025839651934802532,
+      "overall_detect_rate": 1.0,
+      "overall_human_pass_through": 1.0
+    },
+    {
+      "model": "xgb_v1 (tuned+aug)",
+      "model_dir": "src/classifier/models/xgb_v1",
+      "family": "linear",
+      "display_name": "Linear",
+      "n": 14,
+      "detection_rate": 1.0,
+      "mean_human_score": 0.006925348192453384,
+      "overall_detect_rate": 1.0,
+      "overall_human_pass_through": 1.0
+    },
+    {
+      "model": "xgb_v1 (tuned+aug)",
+      "model_dir": "src/classifier/models/xgb_v1",
+      "family": "llm",
+      "display_name": "LLM",
+      "n": 18,
+      "detection_rate": 1.0,
+      "mean_human_score": 0.01439092680811882,
+      "overall_detect_rate": 1.0,
+      "overall_human_pass_through": 1.0
+    },
+    {
+      "model": "xgb_v1 (tuned+aug)",
+      "model_dir": "src/classifier/models/xgb_v1",
+      "family": "scripted",
+      "display_name": "Scripted",
+      "n": 11,
+      "detection_rate": 1.0,
+      "mean_human_score": 0.004530097357928753,
+      "overall_detect_rate": 1.0,
+      "overall_human_pass_through": 1.0
+    },
+    {
+      "model": "xgb_v1 (tuned+aug)",
+      "model_dir": "src/classifier/models/xgb_v1",
+      "family": "semi_auto",
+      "display_name": "Semi-Auto",
+      "n": 10,
+      "detection_rate": 1.0,
+      "mean_human_score": 0.011404246091842651,
+      "overall_detect_rate": 1.0,
+      "overall_human_pass_through": 1.0
+    },
+    {
+      "model": "xgb_v1 (tuned+aug)",
+      "model_dir": "src/classifier/models/xgb_v1",
+      "family": "slow",
+      "display_name": "Slow",
+      "n": 15,
+      "detection_rate": 1.0,
+      "mean_human_score": 0.002528230892494321,
+      "overall_detect_rate": 1.0,
+      "overall_human_pass_through": 1.0
+    },
+    {
+      "model": "xgb_v1 (tuned+aug)",
+      "model_dir": "src/classifier/models/xgb_v1",
+      "family": "speedrun",
+      "display_name": "Speedrun",
+      "n": 15,
+      "detection_rate": 1.0,
+      "mean_human_score": 0.006503981072455645,
+      "overall_detect_rate": 1.0,
+      "overall_human_pass_through": 1.0
+    },
+    {
+      "model": "xgb_v1 (tuned+aug)",
+      "model_dir": "src/classifier/models/xgb_v1",
+      "family": "stealth",
+      "display_name": "Stealth",
+      "n": 12,
+      "detection_rate": 1.0,
+      "mean_human_score": 0.0023924054112285376,
+      "overall_detect_rate": 1.0,
+      "overall_human_pass_through": 1.0
+    },
+    {
+      "model": "xgb_v1 (tuned+aug)",
+      "model_dir": "src/classifier/models/xgb_v1",
+      "family": "tabber",
+      "display_name": "Tabber",
+      "n": 12,
+      "detection_rate": 1.0,
+      "mean_human_score": 0.0025033382698893547,
+      "overall_detect_rate": 1.0,
+      "overall_human_pass_through": 1.0
+    },
+    {
+      "model": "xgb_v1 (tuned+aug)",
+      "model_dir": "src/classifier/models/xgb_v1",
+      "family": "trace_conditioned",
+      "display_name": "Trace-Conditioned",
+      "n": 11,
+      "detection_rate": 1.0,
+      "mean_human_score": 0.00947216060012579,
+      "overall_detect_rate": 1.0,
+      "overall_human_pass_through": 1.0
+    },
+    {
+      "model": "xgb_v1_noaug (tuned, no aug)",
+      "model_dir": "src/classifier/models/xgb_v1_noaug",
+      "family": "erratic",
+      "display_name": "Erratic",
+      "n": 14,
+      "detection_rate": 1.0,
+      "mean_human_score": 0.0007344515179283917,
+      "overall_detect_rate": 0.9924242424242424,
+      "overall_human_pass_through": 1.0
+    },
+    {
+      "model": "xgb_v1_noaug (tuned, no aug)",
+      "model_dir": "src/classifier/models/xgb_v1_noaug",
+      "family": "linear",
+      "display_name": "Linear",
+      "n": 14,
+      "detection_rate": 1.0,
+      "mean_human_score": 0.0021271593868732452,
+      "overall_detect_rate": 0.9924242424242424,
+      "overall_human_pass_through": 1.0
+    },
+    {
+      "model": "xgb_v1_noaug (tuned, no aug)",
+      "model_dir": "src/classifier/models/xgb_v1_noaug",
+      "family": "llm",
+      "display_name": "LLM",
+      "n": 18,
+      "detection_rate": 0.9444444444444444,
+      "mean_human_score": 0.04671658203005791,
+      "overall_detect_rate": 0.9924242424242424,
+      "overall_human_pass_through": 1.0
+    },
+    {
+      "model": "xgb_v1_noaug (tuned, no aug)",
+      "model_dir": "src/classifier/models/xgb_v1_noaug",
+      "family": "scripted",
+      "display_name": "Scripted",
+      "n": 11,
+      "detection_rate": 1.0,
+      "mean_human_score": 0.0024169369135051966,
+      "overall_detect_rate": 0.9924242424242424,
+      "overall_human_pass_through": 1.0
+    },
+    {
+      "model": "xgb_v1_noaug (tuned, no aug)",
+      "model_dir": "src/classifier/models/xgb_v1_noaug",
+      "family": "semi_auto",
+      "display_name": "Semi-Auto",
+      "n": 10,
+      "detection_rate": 1.0,
+      "mean_human_score": 0.007380473427474499,
+      "overall_detect_rate": 0.9924242424242424,
+      "overall_human_pass_through": 1.0
+    },
+    {
+      "model": "xgb_v1_noaug (tuned, no aug)",
+      "model_dir": "src/classifier/models/xgb_v1_noaug",
+      "family": "slow",
+      "display_name": "Slow",
+      "n": 15,
+      "detection_rate": 1.0,
+      "mean_human_score": 0.000522585294675082,
+      "overall_detect_rate": 0.9924242424242424,
+      "overall_human_pass_through": 1.0
+    },
+    {
+      "model": "xgb_v1_noaug (tuned, no aug)",
+      "model_dir": "src/classifier/models/xgb_v1_noaug",
+      "family": "speedrun",
+      "display_name": "Speedrun",
+      "n": 15,
+      "detection_rate": 1.0,
+      "mean_human_score": 0.004689811263233423,
+      "overall_detect_rate": 0.9924242424242424,
+      "overall_human_pass_through": 1.0
+    },
+    {
+      "model": "xgb_v1_noaug (tuned, no aug)",
+      "model_dir": "src/classifier/models/xgb_v1_noaug",
+      "family": "stealth",
+      "display_name": "Stealth",
+      "n": 12,
+      "detection_rate": 1.0,
+      "mean_human_score": 0.0014827749691903591,
+      "overall_detect_rate": 0.9924242424242424,
+      "overall_human_pass_through": 1.0
+    },
+    {
+      "model": "xgb_v1_noaug (tuned, no aug)",
+      "model_dir": "src/classifier/models/xgb_v1_noaug",
+      "family": "tabber",
+      "display_name": "Tabber",
+      "n": 12,
+      "detection_rate": 1.0,
+      "mean_human_score": 0.001993803773075342,
+      "overall_detect_rate": 0.9924242424242424,
+      "overall_human_pass_through": 1.0
+    },
+    {
+      "model": "xgb_v1_noaug (tuned, no aug)",
+      "model_dir": "src/classifier/models/xgb_v1_noaug",
+      "family": "trace_conditioned",
+      "display_name": "Trace-Conditioned",
+      "n": 11,
+      "detection_rate": 1.0,
+      "mean_human_score": 0.0025165847036987543,
+      "overall_detect_rate": 0.9924242424242424,
+      "overall_human_pass_through": 1.0
+    },
+    {
+      "model": "xgb_v2 (default+aug)",
+      "model_dir": "src/classifier/models/xgb_v2",
+      "family": "erratic",
+      "display_name": "Erratic",
+      "n": 14,
+      "detection_rate": 1.0,
+      "mean_human_score": 0.0006108406814746559,
+      "overall_detect_rate": 0.9924242424242424,
+      "overall_human_pass_through": 1.0
+    },
+    {
+      "model": "xgb_v2 (default+aug)",
+      "model_dir": "src/classifier/models/xgb_v2",
+      "family": "linear",
+      "display_name": "Linear",
+      "n": 14,
+      "detection_rate": 1.0,
+      "mean_human_score": 0.00112154521048069,
+      "overall_detect_rate": 0.9924242424242424,
+      "overall_human_pass_through": 1.0
+    },
+    {
+      "model": "xgb_v2 (default+aug)",
+      "model_dir": "src/classifier/models/xgb_v2",
+      "family": "llm",
+      "display_name": "LLM",
+      "n": 18,
+      "detection_rate": 0.9444444444444444,
+      "mean_human_score": 0.035809919238090515,
+      "overall_detect_rate": 0.9924242424242424,
+      "overall_human_pass_through": 1.0
+    },
+    {
+      "model": "xgb_v2 (default+aug)",
+      "model_dir": "src/classifier/models/xgb_v2",
+      "family": "scripted",
+      "display_name": "Scripted",
+      "n": 11,
+      "detection_rate": 1.0,
+      "mean_human_score": 0.0014472183538600802,
+      "overall_detect_rate": 0.9924242424242424,
+      "overall_human_pass_through": 1.0
+    },
+    {
+      "model": "xgb_v2 (default+aug)",
+      "model_dir": "src/classifier/models/xgb_v2",
+      "family": "semi_auto",
+      "display_name": "Semi-Auto",
+      "n": 10,
+      "detection_rate": 1.0,
+      "mean_human_score": 0.007121365517377853,
+      "overall_detect_rate": 0.9924242424242424,
+      "overall_human_pass_through": 1.0
+    },
+    {
+      "model": "xgb_v2 (default+aug)",
+      "model_dir": "src/classifier/models/xgb_v2",
+      "family": "slow",
+      "display_name": "Slow",
+      "n": 15,
+      "detection_rate": 1.0,
+      "mean_human_score": 0.0003735510108526796,
+      "overall_detect_rate": 0.9924242424242424,
+      "overall_human_pass_through": 1.0
+    },
+    {
+      "model": "xgb_v2 (default+aug)",
+      "model_dir": "src/classifier/models/xgb_v2",
+      "family": "speedrun",
+      "display_name": "Speedrun",
+      "n": 15,
+      "detection_rate": 1.0,
+      "mean_human_score": 0.006073963828384876,
+      "overall_detect_rate": 0.9924242424242424,
+      "overall_human_pass_through": 1.0
+    },
+    {
+      "model": "xgb_v2 (default+aug)",
+      "model_dir": "src/classifier/models/xgb_v2",
+      "family": "stealth",
+      "display_name": "Stealth",
+      "n": 12,
+      "detection_rate": 1.0,
+      "mean_human_score": 0.0002943532890640199,
+      "overall_detect_rate": 0.9924242424242424,
+      "overall_human_pass_through": 1.0
+    },
+    {
+      "model": "xgb_v2 (default+aug)",
+      "model_dir": "src/classifier/models/xgb_v2",
+      "family": "tabber",
+      "display_name": "Tabber",
+      "n": 12,
+      "detection_rate": 1.0,
+      "mean_human_score": 0.0006311911274679005,
+      "overall_detect_rate": 0.9924242424242424,
+      "overall_human_pass_through": 1.0
+    },
+    {
+      "model": "xgb_v2 (default+aug)",
+      "model_dir": "src/classifier/models/xgb_v2",
+      "family": "trace_conditioned",
+      "display_name": "Trace-Conditioned",
+      "n": 11,
+      "detection_rate": 1.0,
+      "mean_human_score": 0.0021627084352076054,
+      "overall_detect_rate": 0.9924242424242424,
+      "overall_human_pass_through": 1.0
+    },
+    {
+      "model": "xgb_v2_noaug (default, no aug)",
+      "model_dir": "src/classifier/models/xgb_v2_noaug",
+      "family": "erratic",
+      "display_name": "Erratic",
+      "n": 14,
+      "detection_rate": 1.0,
+      "mean_human_score": 0.000852018769364804,
+      "overall_detect_rate": 1.0,
+      "overall_human_pass_through": 1.0
+    },
+    {
+      "model": "xgb_v2_noaug (default, no aug)",
+      "model_dir": "src/classifier/models/xgb_v2_noaug",
+      "family": "linear",
+      "display_name": "Linear",
+      "n": 14,
+      "detection_rate": 1.0,
+      "mean_human_score": 0.0016860634787008166,
+      "overall_detect_rate": 1.0,
+      "overall_human_pass_through": 1.0
+    },
+    {
+      "model": "xgb_v2_noaug (default, no aug)",
+      "model_dir": "src/classifier/models/xgb_v2_noaug",
+      "family": "llm",
+      "display_name": "LLM",
+      "n": 18,
+      "detection_rate": 1.0,
+      "mean_human_score": 0.008657127618789673,
+      "overall_detect_rate": 1.0,
+      "overall_human_pass_through": 1.0
+    },
+    {
+      "model": "xgb_v2_noaug (default, no aug)",
+      "model_dir": "src/classifier/models/xgb_v2_noaug",
+      "family": "scripted",
+      "display_name": "Scripted",
+      "n": 11,
+      "detection_rate": 1.0,
+      "mean_human_score": 0.0013791732490062714,
+      "overall_detect_rate": 1.0,
+      "overall_human_pass_through": 1.0
+    },
+    {
+      "model": "xgb_v2_noaug (default, no aug)",
+      "model_dir": "src/classifier/models/xgb_v2_noaug",
+      "family": "semi_auto",
+      "display_name": "Semi-Auto",
+      "n": 10,
+      "detection_rate": 1.0,
+      "mean_human_score": 0.00562178622931242,
+      "overall_detect_rate": 1.0,
+      "overall_human_pass_through": 1.0
+    },
+    {
+      "model": "xgb_v2_noaug (default, no aug)",
+      "model_dir": "src/classifier/models/xgb_v2_noaug",
+      "family": "slow",
+      "display_name": "Slow",
+      "n": 15,
+      "detection_rate": 1.0,
+      "mean_human_score": 0.000509871169924736,
+      "overall_detect_rate": 1.0,
+      "overall_human_pass_through": 1.0
+    },
+    {
+      "model": "xgb_v2_noaug (default, no aug)",
+      "model_dir": "src/classifier/models/xgb_v2_noaug",
+      "family": "speedrun",
+      "display_name": "Speedrun",
+      "n": 15,
+      "detection_rate": 1.0,
+      "mean_human_score": 0.00539174722507596,
+      "overall_detect_rate": 1.0,
+      "overall_human_pass_through": 1.0
+    },
+    {
+      "model": "xgb_v2_noaug (default, no aug)",
+      "model_dir": "src/classifier/models/xgb_v2_noaug",
+      "family": "stealth",
+      "display_name": "Stealth",
+      "n": 12,
+      "detection_rate": 1.0,
+      "mean_human_score": 0.0005181095912121236,
+      "overall_detect_rate": 1.0,
+      "overall_human_pass_through": 1.0
+    },
+    {
+      "model": "xgb_v2_noaug (default, no aug)",
+      "model_dir": "src/classifier/models/xgb_v2_noaug",
+      "family": "tabber",
+      "display_name": "Tabber",
+      "n": 12,
+      "detection_rate": 1.0,
+      "mean_human_score": 0.0013932782458141446,
+      "overall_detect_rate": 1.0,
+      "overall_human_pass_through": 1.0
+    },
+    {
+      "model": "xgb_v2_noaug (default, no aug)",
+      "model_dir": "src/classifier/models/xgb_v2_noaug",
+      "family": "trace_conditioned",
+      "display_name": "Trace-Conditioned",
+      "n": 11,
+      "detection_rate": 1.0,
+      "mean_human_score": 0.002543952316045761,
+      "overall_detect_rate": 1.0,
+      "overall_human_pass_through": 1.0
+    }
+  ]
+}

@@ -56,6 +56,25 @@ def parse_args() -> argparse.Namespace:
         "in the evaluation pool",
     )
     p.add_argument(
+        "--test-only",
+        action="store_true",
+        help="Evaluate on the held-out test split only (mirrors the train/test "
+        "split used by train_classifier.py). Use --test-size and --random-state "
+        "to match training.",
+    )
+    p.add_argument(
+        "--test-size",
+        type=float,
+        default=0.3,
+        help="Test fraction when --test-only is set (must match training; default: 0.3)",
+    )
+    p.add_argument(
+        "--random-state",
+        type=int,
+        default=42,
+        help="Random seed when --test-only is set (must match training; default: 42)",
+    )
+    p.add_argument(
         "--verbose",
         action="store_true",
         help="Print per-session scores",
@@ -107,6 +126,27 @@ def main() -> None:
 
         n_aug = sum(1 for s in labeled if _is_aug(s))
         print(f"  (of which {n_aug} are pre-generated augmented bot sessions)")
+
+    if args.test_only:
+        from classifier.data_loader import is_augmented as _is_aug
+        from sklearn.model_selection import train_test_split as _tts
+
+        originals = [s for s in labeled if not _is_aug(s)]
+        y_orig = np.array([s.label for s in originals], dtype=int)
+        _, test_idx = _tts(
+            np.arange(len(originals)),
+            test_size=args.test_size,
+            stratify=y_orig if len(np.unique(y_orig)) > 1 else None,
+            random_state=args.random_state,
+        )
+        labeled = [originals[i] for i in test_idx]
+        n_h_te = sum(1 for s in labeled if s.label == 1)
+        n_b_te = sum(1 for s in labeled if s.label == 0)
+        print(
+            f"  --test-only: held-out split = {len(labeled)} sessions "
+            f"({n_h_te}H / {n_b_te}B), test_size={args.test_size}, "
+            f"random_state={args.random_state}"
+        )
 
     # ------------------------------------------------------------------
     # 3. Extract features and predict

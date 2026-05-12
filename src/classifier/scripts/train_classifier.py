@@ -14,7 +14,7 @@ The script:
     1. Loads labeled sessions from data/human/ (label=1) and data/bot/ (label=0).
        With --adversarial-augment, also loads pre-generated humanized bot
        sessions from data/bot_augmented/ (added to the train split only).
-    2. Splits data into train/test (80/20 stratified)
+    2. Splits data into train/test (70/30 stratified)
     3. Extracts 39 aggregate features per session
     4. Optionally tunes hyperparameters with Optuna
     5. Trains on train set
@@ -58,8 +58,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--test-size",
         type=float,
-        default=0.2,
-        help="Fraction of data to hold out for testing (default: 0.2)",
+        default=0.3,
+        help="Fraction of data to hold out for testing (default: 0.3)",
     )
     p.add_argument(
         "--random-state",
