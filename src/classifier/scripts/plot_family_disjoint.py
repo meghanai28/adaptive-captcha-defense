@@ -27,7 +27,6 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-
 FAMILY_DISPLAY = {
     "linear": "Linear",
     "tabber": "Tabber",
@@ -93,9 +92,7 @@ def _load_disjoint_summary(path: Path) -> dict[str, dict]:
     }
 
 
-def plot_family_disjoint(
-    noaug_path: Path, advaug_path: Path, out_path: Path
-) -> None:
+def plot_family_disjoint(noaug_path: Path, advaug_path: Path, out_path: Path) -> None:
     noaug = _load_disjoint_summary(noaug_path)
     advaug = _load_disjoint_summary(advaug_path)
 
@@ -112,14 +109,26 @@ def plot_family_disjoint(
 
     fig, ax = plt.subplots(figsize=(11, 5.5))
     b1 = ax.bar(
-        x - width / 2, noaug_mean, width, yerr=noaug_std,
-        label="XGBoost (noaug)", color="steelblue", capsize=3,
-        edgecolor="black", linewidth=0.6,
+        x - width / 2,
+        noaug_mean,
+        width,
+        yerr=noaug_std,
+        label="XGBoost (noaug)",
+        color="steelblue",
+        capsize=3,
+        edgecolor="black",
+        linewidth=0.6,
     )
     b2 = ax.bar(
-        x + width / 2, advaug_mean, width, yerr=advaug_std,
-        label="XGBoost (advaug)", color="tomato", capsize=3,
-        edgecolor="black", linewidth=0.6,
+        x + width / 2,
+        advaug_mean,
+        width,
+        yerr=advaug_std,
+        label="XGBoost (advaug)",
+        color="tomato",
+        capsize=3,
+        edgecolor="black",
+        linewidth=0.6,
     )
 
     for bars, means in [(b1, noaug_mean), (b2, advaug_mean)]:
@@ -130,7 +139,9 @@ def plot_family_disjoint(
                 rect.get_x() + rect.get_width() / 2,
                 rect.get_height() + 0.012,
                 f"{val:.3f}",
-                ha="center", va="bottom", fontsize=7.5,
+                ha="center",
+                va="bottom",
+                fontsize=7.5,
             )
 
     ax.set_xticks(x)
@@ -177,8 +188,13 @@ def plot_per_family_test(per_family_path: Path, out_path: Path) -> None:
             means.append(cell["detection_rate"] if cell else np.nan)
         offset = (mi - (n_models - 1) / 2) * width
         bars = ax.bar(
-            x + offset, means, width, label=model,
-            color=cmap(mi), edgecolor="black", linewidth=0.5,
+            x + offset,
+            means,
+            width,
+            label=model,
+            color=cmap(mi),
+            edgecolor="black",
+            linewidth=0.5,
         )
         for rect, val in zip(bars, means):
             if np.isnan(val):
@@ -187,16 +203,16 @@ def plot_per_family_test(per_family_path: Path, out_path: Path) -> None:
                 rect.get_x() + rect.get_width() / 2,
                 rect.get_height() + 0.012,
                 f"{val:.3f}",
-                ha="center", va="bottom", fontsize=6.5,
+                ha="center",
+                va="bottom",
+                fontsize=6.5,
             )
 
     ax.set_xticks(x)
     ax.set_xticklabels(labels, rotation=20, ha="right")
     ax.set_ylim(0.0, 1.10)
     ax.set_ylabel("Detection Accuracy on Test Split")
-    ax.set_title(
-        "XGBoost Per-Family Detection (standard test split, no retraining)"
-    )
+    ax.set_title("XGBoost Per-Family Detection (standard test split, no retraining)")
     ax.axhline(1.0, color="gray", linewidth=0.6, linestyle="--", alpha=0.5)
     ax.grid(axis="y", linestyle=":", alpha=0.4)
     ax.legend(loc="lower left", fontsize=8)
@@ -219,9 +235,7 @@ def main() -> None:
         )
         raise SystemExit(1)
 
-    plot_family_disjoint(
-        noaug_json, advaug_json, out_dir / "family_disjoint_bars.png"
-    )
+    plot_family_disjoint(noaug_json, advaug_json, out_dir / "family_disjoint_bars.png")
 
     per_family_json = Path(args.per_family_dir) / "per_family_summary.json"
     if per_family_json.exists():

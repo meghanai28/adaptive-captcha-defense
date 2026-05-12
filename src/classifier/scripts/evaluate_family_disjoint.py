@@ -40,7 +40,6 @@ from classifier.features import FEATURE_NAMES, SessionFeatureExtractor
 from classifier.model import HumanLikelihoodClassifier
 from rl_captcha.config import ClassifierConfig
 
-
 # Friendly display names for the bot_type values present in src/data/bot/.
 FAMILY_DISPLAY = {
     "linear": "Linear",
@@ -290,14 +289,18 @@ def main() -> None:
     out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    print(f"[family_disjoint] Loading sessions from {Path(args.data_dir).resolve()} ...")
+    print(
+        f"[family_disjoint] Loading sessions from {Path(args.data_dir).resolve()} ..."
+    )
     sessions = load_from_directory(
         args.data_dir, include_augmented=args.adversarial_augment
     )
     humans, bots, aug_humans, aug_bots = _split_sessions(sessions)
     if aug_humans:
-        print(f"  WARNING: {len(aug_humans)} augmented human sessions found; "
-              f"these are ignored (we only train on augmented bots).")
+        print(
+            f"  WARNING: {len(aug_humans)} augmented human sessions found; "
+            f"these are ignored (we only train on augmented bots)."
+        )
     print(
         f"  Loaded: {len(humans)} humans, {len(bots)} bot originals, "
         f"{len(aug_bots)} augmented bots"
@@ -323,8 +326,10 @@ def main() -> None:
     seeds = [args.seed_base + i for i in range(args.n_seeds)]
     print(f"  Seeds: {seeds}")
     print(f"  Adversarial augmentation (data-level): {args.adversarial_augment}")
-    print(f"  Adversarial augmentation (feature-level): "
-          f"{not args.no_feature_adversarial}\n")
+    print(
+        f"  Adversarial augmentation (feature-level): "
+        f"{not args.no_feature_adversarial}\n"
+    )
 
     summary: list[dict] = []
     per_seed_dump: list[dict] = []
@@ -416,9 +421,7 @@ def main() -> None:
         f"{'Family':<22s} {'n_held':>7s} {'detect_mean':>12s} "
         f"{'detect_std':>11s} {'sanity_acc':>11s}"
     )
-    for row in sorted(
-        summary, key=lambda r: r["heldout_detection_rate_mean"]
-    ):
+    for row in sorted(summary, key=lambda r: r["heldout_detection_rate_mean"]):
         print(
             f"{row['display_name']:<22s} {row['n_heldout_orig']:>7d} "
             f"{row['heldout_detection_rate_mean']:>12.4f} "

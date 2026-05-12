@@ -35,7 +35,6 @@ from classifier.data_loader import is_augmented, load_from_directory
 from classifier.features import SessionFeatureExtractor
 from classifier.model import HumanLikelihoodClassifier
 
-
 FAMILY_DISPLAY = {
     "linear": "Linear",
     "tabber": "Tabber",
@@ -95,9 +94,7 @@ def parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
-def _reproduce_test_split(
-    data_dir: str, test_size: float, random_state: int
-) -> list:
+def _reproduce_test_split(data_dir: str, test_size: float, random_state: int) -> list:
     """Rebuild the held-out test split that train_classifier.py uses."""
     from sklearn.model_selection import train_test_split
 
@@ -202,8 +199,10 @@ def main() -> None:
     with open(json_path, "w") as fh:
         json.dump(
             {
-                "args": {k: (str(v) if isinstance(v, Path) else v)
-                         for k, v in vars(args).items()},
+                "args": {
+                    k: (str(v) if isinstance(v, Path) else v)
+                    for k, v in vars(args).items()
+                },
                 "rows": all_rows,
             },
             fh,
