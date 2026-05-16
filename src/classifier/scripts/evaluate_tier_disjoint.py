@@ -1,21 +1,21 @@
-"""Family-disjoint evaluation for the XGBoost classifier.
+"""Tier-disjoint evaluation for the XGBoost classifier.
 
-For each bot family F (e.g. linear, llm, semi_auto, ...):
-    1. Hold out every session with ``bot_type == F`` (originals AND augmented).
-    2. Train a fresh classifier on (humans + all non-F bots).
-       With ``--adversarial-augment``, also include the non-F augmented bots
-       in the training split.
-    3. Evaluate on all held-out F bot sessions and on a stratified held-out
-       sanity test split drawn from (humans + non-F bots).
+For each adversarial tier T (1-5):
+    1. Hold out every bot session whose bot_type maps to tier T.
+    2. Train a fresh classifier on (humans + all bots from other tiers).
+       With ``--adversarial-augment``, also include augmented bots from
+       other tiers in the training split.
+    3. Evaluate on all held-out tier T bot sessions and on a stratified
+       held-out sanity test split drawn from (humans + non-T bots).
 
-Mirrors the RL per-family / disjoint-tier evaluation in Sections 4.1.4 and
-4.1.5 of the paper. Reports mean ± std over ``--n-seeds`` retrains.
+Mirrors evaluate_family_disjoint.py but partitions by tier instead of
+family, to match the RL per-tier generalization figure.
 
 Usage (from repo root)::
 
-    python src/classifier/scripts/evaluate_family_disjoint.py \\
+    python src/classifier/scripts/evaluate_tier_disjoint.py \\
         --data-dir src/data/ \\
-        --output-dir src/classifier/family_disjoint/advaug \\
+        --output-dir src/classifier/tier_disjoint/advaug \\
         --adversarial-augment \\
         --n-seeds 5
 """
@@ -39,38 +39,25 @@ from classifier.data_loader import Session, is_augmented, load_from_directory
 from classifier.features import SessionFeatureExtractor
 from classifier.model import HumanLikelihoodClassifier
 from rl_captcha.config import ClassifierConfig
-
-# Friendly display names for the bot_type values present in src/data/bot/.
-FAMILY_DISPLAY = {
-    "linear": "Linear",
-    "tabber": "Tabber",
-    "speedrun": "Speedrun",
-    "scripted": "Scripted",
-    "stealth": "Stealth",
-    "slow": "Slow",
-    "erratic": "Erratic",
-    "semi_auto": "Semi-Auto",
-    "trace_conditioned": "Trace-Conditioned",
-    "llm": "LLM",
-}
+from rl_captcha.data.loader import TIER_NAMES, bot_type_to_tier
 
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(
-        description="Family-disjoint evaluation for the XGBoost classifier"
+        description="Tier-disjoint evaluation for the XGBoost classifier"
     )
     p.add_argument("--data-dir", type=str, default="src/data/")
     p.add_argument(
         "--output-dir",
         type=str,
-        default="src/classifier/family_disjoint/run",
-        help="Directory where per-family results, summary CSV, and JSON are saved",
+        default="src/classifier/tier_disjoint/run",
+        help="Directory where per-tier results, summary CSV, and JSON are saved",
     )
     p.add_argument(
         "--adversarial-augment",
         action="store_true",
         help="Include pre-generated augmented bot sessions (from "
-        "data/bot_augmented/) for non-held-out families in the train split.",
+        "data/bot_augmented/) for non-held-out tiers in the train split.",
     )
     p.add_argument(
         "--no-feature-adversarial",
@@ -82,7 +69,7 @@ def parse_args() -> argparse.Namespace:
         "--n-seeds",
         type=int,
         default=5,
-        help="Number of independent retrains per family (default: 5)",
+        help="Number of independent retrains per tier (default: 5)",
     )
     p.add_argument(
         "--seed-base",
@@ -94,7 +81,7 @@ def parse_args() -> argparse.Namespace:
         "--test-size",
         type=float,
         default=0.3,
-        help="Stratified held-out fraction from (humans + non-F bots) used "
+        help="Stratified held-out fraction from (humans + non-T bots) used "
         "for a sanity test (default: 0.3, matching train_classifier.py)",
     )
     p.add_argument(
@@ -104,11 +91,11 @@ def parse_args() -> argparse.Namespace:
         help="Decision threshold for human vs bot (default: 0.5)",
     )
     p.add_argument(
-        "--families",
+        "--tiers",
         type=str,
         default="",
-        help="Comma-separated bot_type values to evaluate. Empty = every "
-        "family present in the data.",
+        help="Comma-separated tier integers to evaluate. Empty = every "
+        "tier present in the data.",
     )
     return p.parse_args()
 
@@ -116,11 +103,6 @@ def parse_args() -> argparse.Namespace:
 def _split_sessions(
     sessions: list[Session],
 ) -> tuple[list[Session], list[Session], list[Session], list[Session]]:
-    """Partition into (humans, bots, aug_humans, aug_bots).
-
-    Augmented humans shouldn't exist (we only augment bots) but the loader
-    accepts them so we filter defensively.
-    """
     humans: list[Session] = []
     bots: list[Session] = []
     aug_humans: list[Session] = []
@@ -136,17 +118,18 @@ def _split_sessions(
     return humans, bots, aug_humans, aug_bots
 
 
-def _family_of(session: Session) -> str:
-    return str(session.metadata.get("bot_type", "unknown"))
+def _tier_of(session: Session) -> int:
+    """Resolve a session's adversarial tier (1-5). Unknown → 0."""
+    explicit = session.metadata.get("tier")
+    if explicit is not None:
+        try:
+            return int(explicit)
+        except (TypeError, ValueError):
+            pass
+    return bot_type_to_tier(session.metadata.get("bot_type"))
 
 
 def _binary_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, float]:
-    """Accuracy, precision, recall, F1 for binary (human=1, bot=0) labels.
-
-    Recall is reported wrt the bot class (i.e. detection rate) because that
-    is the disjoint-eval quantity we care about. Precision is also bot-side.
-    Accuracy is computed normally.
-    """
     if len(y_true) == 0:
         return {"n": 0, "accuracy": float("nan"), "detection_rate": float("nan")}
     correct = (y_true == y_pred).astype(int)
@@ -170,7 +153,7 @@ def _binary_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, float]:
 
 
 def _run_one_seed(
-    family: str,
+    tier: int,
     seed: int,
     humans: list[Session],
     bots: list[Session],
@@ -178,18 +161,16 @@ def _run_one_seed(
     args: argparse.Namespace,
     extractor: SessionFeatureExtractor,
 ) -> dict:
-    """Train on (humans + non-F bots) and evaluate on held-out family F."""
+    """Train on (humans + non-T bots) and evaluate on held-out tier T."""
     from sklearn.model_selection import train_test_split
 
-    train_bots_orig = [s for s in bots if _family_of(s) != family]
-    heldout_orig = [s for s in bots if _family_of(s) == family]
-    heldout_aug = [s for s in aug_bots if _family_of(s) == family]
+    train_bots_orig = [s for s in bots if _tier_of(s) != tier]
+    heldout_orig = [s for s in bots if _tier_of(s) == tier]
+    heldout_aug = [s for s in aug_bots if _tier_of(s) == tier]
 
     if not heldout_orig:
-        return {"family": family, "seed": seed, "error": "no held-out originals"}
+        return {"tier": tier, "seed": seed, "error": "no held-out originals"}
 
-    # Stratified 70/30 split mirrors train_classifier.py so the sanity test
-    # set is comparable across runs.
     pool = humans + train_bots_orig
     y_pool = np.array([s.label for s in pool], dtype=int)
     train_idx, test_idx = train_test_split(
@@ -202,7 +183,7 @@ def _run_one_seed(
     sanity_test_sessions = [pool[i] for i in test_idx]
 
     if args.adversarial_augment:
-        train_aug = [s for s in aug_bots if _family_of(s) != family]
+        train_aug = [s for s in aug_bots if _tier_of(s) != tier]
         train_sessions = train_sessions + train_aug
     X_train = extractor.extract_many(train_sessions)
     y_train = np.array([s.label for s in train_sessions], dtype=int)
@@ -210,9 +191,6 @@ def _run_one_seed(
     X_sanity = extractor.extract_many(sanity_test_sessions)
     y_sanity = np.array([s.label for s in sanity_test_sessions], dtype=int)
 
-    # Held-out F sessions: report originals and augmented separately so the
-    # reader can see both regimes. Detection rate on originals is the main
-    # metric (matches the RL per-family figure, which uses original sessions).
     X_held = extractor.extract_many(heldout_orig)
     y_held = np.array([s.label for s in heldout_orig], dtype=int)
 
@@ -248,7 +226,7 @@ def _run_one_seed(
         held_aug = {"n": 0}
 
     return {
-        "family": family,
+        "tier": tier,
         "seed": seed,
         "n_train": int(len(y_train)),
         "n_train_human": int((y_train == 1).sum()),
@@ -264,7 +242,6 @@ def _run_one_seed(
 
 
 def _aggregate(per_seed: list[dict]) -> dict:
-    """Compute mean/std across seeds for the headline metrics."""
     fields = [
         "sanity_accuracy",
         "sanity_detection_rate",
@@ -289,9 +266,7 @@ def main() -> None:
     out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    print(
-        f"[family_disjoint] Loading sessions from {Path(args.data_dir).resolve()} ..."
-    )
+    print(f"[tier_disjoint] Loading sessions from {Path(args.data_dir).resolve()} ...")
     sessions = load_from_directory(
         args.data_dir, include_augmented=args.adversarial_augment
     )
@@ -306,21 +281,21 @@ def main() -> None:
         f"{len(aug_bots)} augmented bots"
     )
 
-    family_counts: dict[str, int] = defaultdict(int)
+    tier_counts: dict[int, int] = defaultdict(int)
     for s in bots:
-        family_counts[_family_of(s)] += 1
+        tier_counts[_tier_of(s)] += 1
 
-    if args.families.strip():
-        requested = [f.strip() for f in args.families.split(",") if f.strip()]
-        missing = [f for f in requested if f not in family_counts]
+    if args.tiers.strip():
+        requested = [int(t.strip()) for t in args.tiers.split(",") if t.strip()]
+        missing = [t for t in requested if t not in tier_counts]
         if missing:
-            print(f"ERROR: requested families not found in data: {missing}")
+            print(f"ERROR: requested tiers not found in data: {missing}")
             sys.exit(1)
-        families = requested
+        tiers = requested
     else:
-        families = sorted(family_counts.keys())
+        tiers = sorted(t for t in tier_counts.keys() if t > 0)
 
-    print(f"  Families to evaluate ({len(families)}): {families}")
+    print(f"  Tiers to evaluate ({len(tiers)}): {tiers}")
 
     extractor = SessionFeatureExtractor()
     seeds = [args.seed_base + i for i in range(args.n_seeds)]
@@ -334,15 +309,18 @@ def main() -> None:
     summary: list[dict] = []
     per_seed_dump: list[dict] = []
 
-    for fam in families:
-        n_fam = family_counts[fam]
-        print(f"=== Family: {fam}  (n_originals={n_fam}) ===")
+    for tier in tiers:
+        n_tier = tier_counts[tier]
+        print(
+            f"=== Tier {tier} ({TIER_NAMES.get(tier, 'unknown')})  "
+            f"(n_originals={n_tier}) ==="
+        )
         per_seed_rows: list[dict] = []
         for seed in seeds:
             t0 = time.time()
             try:
                 row = _run_one_seed(
-                    family=fam,
+                    tier=tier,
                     seed=seed,
                     humans=humans,
                     bots=bots,
@@ -364,15 +342,15 @@ def main() -> None:
             )
 
         if not per_seed_rows:
-            print(f"  No successful seeds for {fam}; skipping aggregation.")
+            print(f"  No successful seeds for tier {tier}; skipping aggregation.")
             continue
 
         agg = _aggregate(per_seed_rows)
         summary.append(
             {
-                "family": fam,
-                "display_name": FAMILY_DISPLAY.get(fam, fam),
-                "n_originals": n_fam,
+                "tier": tier,
+                "display_name": TIER_NAMES.get(tier, f"tier_{tier}"),
+                "n_originals": n_tier,
                 "n_seeds_ok": len(per_seed_rows),
                 "n_train_human": per_seed_rows[0]["n_train_human"],
                 "n_train_bot_mean": float(
@@ -388,17 +366,16 @@ def main() -> None:
             f"± {agg['heldout_detection_rate_std']:.4f}\n"
         )
 
-    # --- Save outputs ---
-    csv_path = out_dir / "family_disjoint_summary.csv"
+    csv_path = out_dir / "tier_disjoint_summary.csv"
     if summary:
         fields = list(summary[0].keys())
         with open(csv_path, "w", newline="") as fh:
             writer = csv.DictWriter(fh, fieldnames=fields)
             writer.writeheader()
             writer.writerows(summary)
-        print(f"[family_disjoint] Wrote summary CSV -> {csv_path}")
+        print(f"[tier_disjoint] Wrote summary CSV -> {csv_path}")
 
-    json_path = out_dir / "family_disjoint_per_seed.json"
+    json_path = out_dir / "tier_disjoint_per_seed.json"
     with open(json_path, "w") as fh:
         json.dump(
             {
@@ -413,15 +390,14 @@ def main() -> None:
             fh,
             indent=2,
         )
-    print(f"[family_disjoint] Wrote per-seed JSON -> {json_path}")
+    print(f"[tier_disjoint] Wrote per-seed JSON -> {json_path}")
 
-    # --- Print headline table ---
-    print("\n=== Family-Disjoint Detection Summary ===")
+    print("\n=== Tier-Disjoint Detection Summary ===")
     print(
-        f"{'Family':<22s} {'n_held':>7s} {'detect_mean':>12s} "
+        f"{'Tier':<22s} {'n_held':>7s} {'detect_mean':>12s} "
         f"{'detect_std':>11s} {'sanity_acc':>11s}"
     )
-    for row in sorted(summary, key=lambda r: r["heldout_detection_rate_mean"]):
+    for row in sorted(summary, key=lambda r: r["tier"]):
         print(
             f"{row['display_name']:<22s} {row['n_heldout_orig']:>7d} "
             f"{row['heldout_detection_rate_mean']:>12.4f} "

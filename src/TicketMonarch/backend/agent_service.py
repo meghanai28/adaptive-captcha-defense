@@ -80,10 +80,9 @@ class AgentService:
             )
 
         if checkpoint_path is None:
-            checkpoint_path = str(
+            checkpoint_path = os.getenv("RL_CHECKPOINT_PATH") or str(
                 PROJECT_ROOT
-                / "rl_captcha"
-                / "agent"
+                / "pre-review"
                 / "checkpoints"
                 / _ALGO_DEFAULTS[self.algorithm]
             )
